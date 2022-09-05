@@ -1,6 +1,6 @@
 # Convolutional Neural Network
 
-import os, signal
+import os
 os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
 
 import warnings
@@ -51,7 +51,7 @@ cnn = tf.keras.models.Sequential([
     tf.keras.layers.Flatten(),
 
     # Hidden layer
-    tf.keras.layers.Dense(512, activation='relu'),
+    tf.keras.layers.Dense(128, activation='relu'),
 
     # Output Layer
     tf.keras.layers.Dense(1, activation='sigmoid')
@@ -62,7 +62,7 @@ cnn = tf.keras.models.Sequential([
 
 # Compiling the CNN
 cnn.compile(loss='binary_crossentropy', 
-            optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.001), 
+            optimizer='adam', 
             metrics=['accuracy'])
 
 # Training the CNN on the Training set and evaluating it on the Test set
@@ -88,5 +88,3 @@ if result[0][0] == 1:
 else:
     prediction = 'cat'
 print(prediction)
-
-os.kill(os.getpid(), signal.SIGKILL)
