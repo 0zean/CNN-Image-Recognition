@@ -1,59 +1,83 @@
 # Convolutional Neural Network
 
+import os, signal
+os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
+
+import warnings
 import tensorflow as tf
-from keras.preprocessing.image import ImageDataGenerator
-tf.__version__
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+warnings.filterwarnings('ignore')
+
+
+class myCallback(tf.keras.callbacks.Callback):
+    def on_epoch_end(self, epoch, logs={}):
+        if logs.get('accuracy') is not None and logs.get('accuracy') > 0.995:
+            print("\nReached 99.9% accuracy so cancelling training!")
+            self.model.stop_training = True
 
 
 # Part 1 - Data Preprocessing
 
 # Preprocessing the Training set
-train_datagen = ImageDataGenerator(rescale=1./255, shear_range=0.2, zoom_range=0.2, horizontal_flip=True)
+train_datagen = ImageDataGenerator(rescale=1/255) #, shear_range=0.2, zoom_range=0.2, horizontal_flip=True)
 
-training_set = train_datagen.flow_from_directory('dataset/training_set', target_size=(64, 64), batch_size=32, class_mode='binary')
+training_set = train_datagen.flow_from_directory('dataset/training_set', target_size=(128, 128), batch_size=32, class_mode='binary')
 
 # Preprocessing the Test set
-test_datagen = ImageDataGenerator(rescale = 1./255)
+test_datagen = ImageDataGenerator(rescale = 1/255)
 
-test_set = test_datagen.flow_from_directory('dataset/test_set', target_size=(64, 64), batch_size=32, class_mode='binary')
+test_set = test_datagen.flow_from_directory('dataset/test_set', target_size=(128, 128), batch_size=32, class_mode='binary')
+
 
 # Part 2 - Building the CNN
 
 # Initialising the CNN
-cnn = tf.keras.models.Sequential()
+cnn = tf.keras.models.Sequential([
 
-# Step 1 - Convolution
-cnn.add(tf.keras.layers.Conv2D(filters=32, kernel_size=3, activation='relu', input_shape=[64, 64, 3]))
+    # 1st Convolution + Pooling
+    tf.keras.layers.Conv2D(16, (3,3), activation='relu', input_shape=(128, 128, 3)),
+    tf.keras.layers.MaxPooling2D(2, 2),
 
-# Step 2 - Pooling
-cnn.add(tf.keras.layers.MaxPool2D(pool_size=2, strides=2))
+    # Adding a 2nd convolution
+    tf.keras.layers.Conv2D(32, (3,3), activation='relu'),
+    tf.keras.layers.MaxPooling2D(2, 2),
 
-# Adding a second convolutional layer
-cnn.add(tf.keras.layers.Conv2D(filters=32, kernel_size=3, activation='relu'))
-cnn.add(tf.keras.layers.MaxPool2D(pool_size=2, strides=2))
+    # Adding a 3rd convolution
+    tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
+    tf.keras.layers.MaxPooling2D(2, 2),
 
-# Step 3 - Flattening
-cnn.add(tf.keras.layers.Flatten())
+    # Flattening
+    tf.keras.layers.Flatten(),
 
-# Step 4 - Full Connection
-cnn.add(tf.keras.layers.Dense(units=128, activation='relu'))
+    # Hidden layer
+    tf.keras.layers.Dense(512, activation='relu'),
 
-# Step 5 - Output Layer
-cnn.add(tf.keras.layers.Dense(units=1, activation='sigmoid'))
+    # Output Layer
+    tf.keras.layers.Dense(1, activation='sigmoid')
+])
+
 
 # Part 3 - Training the CNN
 
 # Compiling the CNN
-cnn.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+cnn.compile(loss='binary_crossentropy', 
+            optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.001), 
+            metrics=['accuracy'])
 
 # Training the CNN on the Training set and evaluating it on the Test set
-cnn.fit(x = training_set, validation_data = test_set, epochs=25)
+cnn.fit(training_set, 
+    epochs=25, 
+    verbose=1, 
+    validation_data=test_set,
+    callbacks=[myCallback()])
+
 
 # Part 4 - Making a single prediction
 import numpy as np
 from keras.preprocessing import image
 
-test_image = image.load_img('dataset/single_prediction/cat_or_dog_1.jpg', target_size=(64, 64))
+test_image = image.load_img('dataset/single_prediction/cat_or_dog_1.jpg', target_size=(128, 128))
 test_image = image.img_to_array(test_image)
 test_image = np.expand_dims(test_image, axis=0)
 result = cnn.predict(test_image)
@@ -64,3 +88,5 @@ if result[0][0] == 1:
 else:
     prediction = 'cat'
 print(prediction)
+
+os.kill(os.getpid(), signal.SIGKILL)
