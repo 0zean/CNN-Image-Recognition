@@ -22,12 +22,12 @@ class myCallback(tf.keras.callbacks.Callback):
 # Preprocessing the Training set by rescaling to normalize images
 train_datagen = ImageDataGenerator(rescale=1/255)
 
-training_set = train_datagen.flow_from_directory('dataset/training_set', target_size=(128, 128), batch_size=32, class_mode='binary')
+training_set = train_datagen.flow_from_directory('dataset/training_set', target_size=(150, 150), batch_size=128, class_mode='binary')
 
 # Preprocessing the Test set
-test_datagen = ImageDataGenerator(rescale = 1/255)
+test_datagen = ImageDataGenerator(rescale=1/255)
 
-test_set = test_datagen.flow_from_directory('dataset/test_set', target_size=(128, 128), batch_size=32, class_mode='binary')
+test_set = test_datagen.flow_from_directory('dataset/test_set', target_size=(150, 150), batch_size=32, class_mode='binary')
 
 
 # Part 2 - Building the CNN
@@ -36,7 +36,7 @@ test_set = test_datagen.flow_from_directory('dataset/test_set', target_size=(128
 cnn = tf.keras.models.Sequential([
 
     # 1st Convolution + Pooling
-    tf.keras.layers.Conv2D(16, (3,3), activation='relu', input_shape=(128, 128, 3)),
+    tf.keras.layers.Conv2D(16, (3,3), activation='relu', input_shape=(150, 150, 3)),
     tf.keras.layers.MaxPooling2D(2, 2),
 
     # Adding a 2nd convolution
@@ -77,7 +77,7 @@ cnn.fit(training_set,
 import numpy as np
 from keras.preprocessing import image
 
-test_image = image.load_img('dataset/single_prediction/cat_or_dog_1.jpg', target_size=(128, 128))
+test_image = image.load_img('dataset/single_prediction/cat_or_dog_1.jpg', target_size=(150, 150))
 test_image = image.img_to_array(test_image)
 test_image = np.expand_dims(test_image, axis=0)
 result = cnn.predict(test_image)
