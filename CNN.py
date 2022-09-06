@@ -5,7 +5,12 @@ os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
 
 import warnings
 import tensorflow as tf
+import matplotlib.pyplot as plt
+from tensorflow.keras import layers
+from tensorflow.keras import Model
+from tensorflow.keras.optimizers import RMSprop
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications.inception_v3 import InceptionV3
 
 warnings.filterwarnings('ignore')
 
@@ -19,65 +24,99 @@ class myCallback(tf.keras.callbacks.Callback):
 
 # Part 1 - Data Preprocessing
 
-# Preprocessing the Training set by rescaling to normalize images
-train_datagen = ImageDataGenerator(rescale=1/255)
+# Preprocessing the Training set by rescaling and augmenting the images
+train_datagen = ImageDataGenerator(rescale=1./255.,
+                                   rotation_range=40,
+                                   width_shift_range=0.2,
+                                   height_shift_range=0.2,
+                                   shear_range=0.2,
+                                   zoom_range=0.2,
+                                   horizontal_flip=True,
+                                   fill_mode='nearest')
 
-training_set = train_datagen.flow_from_directory('dataset/training_set', target_size=(150, 150), batch_size=128, class_mode='binary')
+training_set = train_datagen.flow_from_directory('dataset/training_set', target_size=(150, 150), batch_size=32, class_mode='binary')
 
 # Preprocessing the Test set
-test_datagen = ImageDataGenerator(rescale=1/255)
+validation_datagen = ImageDataGenerator(rescale=1./255.)
 
-test_set = test_datagen.flow_from_directory('dataset/test_set', target_size=(150, 150), batch_size=32, class_mode='binary')
-
-
-# Part 2 - Building the CNN
-
-# Initialising the CNN
-cnn = tf.keras.models.Sequential([
-
-    # 1st Convolution + Pooling
-    tf.keras.layers.Conv2D(16, (3,3), activation='relu', input_shape=(150, 150, 3)),
-    tf.keras.layers.MaxPooling2D(2, 2),
-
-    # Adding a 2nd convolution
-    tf.keras.layers.Conv2D(32, (3,3), activation='relu'),
-    tf.keras.layers.MaxPooling2D(2, 2),
-
-    # Adding a 3rd convolution
-    tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
-    tf.keras.layers.MaxPooling2D(2, 2),
-
-    # Flattening
-    tf.keras.layers.Flatten(),
-
-    # Hidden layer
-    tf.keras.layers.Dense(128, activation='relu'),
-
-    # Output Layer
-    tf.keras.layers.Dense(1, activation='sigmoid')
-])
+validation_set = validation_datagen.flow_from_directory('dataset/test_set', target_size=(150, 150), batch_size=32, class_mode='binary')
 
 
-# Part 3 - Training the CNN
+# Part 2 - Transfer Learning to increase accuracy
 
-# Compiling the CNN
-cnn.compile(loss='binary_crossentropy', 
-            optimizer='adam', 
-            metrics=['accuracy'])
-
-# Training the CNN on the Training set and evaluating it on the Test set
-cnn.fit(training_set, 
-    epochs=25, 
-    verbose=1, 
-    validation_data=test_set,
-    callbacks=[myCallback()])
+# Instantiate InceptionV3 model using pre-trained weights
+local_weights_file = 'inception_v3_weights_tf_dim_ordering_tf_kernels_notop.h5'
 
 
-# Part 4 - Making a single prediction
+def create_pre_trained_model(weights):
+    pre_trained_model = InceptionV3(input_shape=(150, 150, 3),
+                                    include_top=False,
+                                    weights=None)
+    pre_trained_model.load_weights(weights)
+    for layer in pre_trained_model.layers:
+        layer.trainable = False
+    return pre_trained_model
+
+
+pre_trained_model = create_pre_trained_model(local_weights_file)
+
+
+def last_layer_output(pre_trained_model):
+    last_desired_layer = pre_trained_model.get_layer('mixed7')
+    last_output = last_desired_layer.output
+    return last_output
+
+
+last_output = last_layer_output(pre_trained_model)
+
+
+# Part 3 - create combined model from InceptionV3 into CNN
+def combined_model(pre_trained_model, last_output):
+    x = layers.Flatten()(last_output)
+    x = layers.Dense(1024, activation='relu')(x)
+    x = layers.Dropout(0.2)(x)
+    x = layers.Dense(1, activation='sigmoid')(x)
+
+    model = Model(inputs=pre_trained_model.input, outputs=x)
+
+    model.compile(optimizer=RMSprop(learning_rate=0.0001),
+                                    loss='binary_crossentropy',
+                                    metrics=['accuracy'])
+
+    return model
+
+
+model = combined_model(pre_trained_model, last_output)
+
+history = model.fit(training_set,
+                    validation_data=validation_set,
+                    epochs=100,
+                    verbose=1,
+                    callbacks=[myCallback()])
+
+
+# Part 4 - View model metrics
+acc = history.history['accuracy']
+val_acc = history.history['val_accuracy']
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+
+epochs = range(len(acc))
+
+plt.plot(epochs, acc, 'r', label='Training accuracy')
+plt.plot(epochs, val_acc, 'b', label='Validation accuracy')
+plt.title('Training and validation accuracy')
+plt.legend(loc=0)
+plt.figure()
+
+plt.show()
+
+
+# Part 5 - Making a single prediction
 import numpy as np
 from keras.preprocessing import image
 
-test_image = image.load_img('dataset/single_prediction/cat_or_dog_1.jpg', target_size=(150, 150))
+test_image = image.load_img('dataset/single_prediction/cat_or_dog_1.jpg', target_size=(64, 64))
 test_image = image.img_to_array(test_image)
 test_image = np.expand_dims(test_image, axis=0)
 result = cnn.predict(test_image)
