@@ -1,8 +1,8 @@
 # CNN Image Recognition
 
-A basic 2-layer CNN for image recognition
+A Combination CNN model using InceptionV3 via transfer learning
 
-The Suggested model produces results with 88.5% accuracy.
+The Suggested model produces results with 97% accuracy out of sample.
 
 The image prediction is a binary output of either a Dog or Cat:
 
