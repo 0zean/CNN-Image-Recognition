@@ -17,8 +17,8 @@ warnings.filterwarnings('ignore')
 
 class myCallback(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs={}):
-        if logs.get('accuracy') is not None and logs.get('accuracy') > 0.995:
-            print("\nReached 99.5% accuracy: cancelling training!")
+        if logs.get('accuracy') is not None and logs.get('accuracy') > 0.95:
+            print("\nReached 95% accuracy: cancelling training!")
             self.model.stop_training = True
 
 
@@ -90,7 +90,7 @@ model = combined_model(pre_trained_model, last_output)
 
 history = model.fit(training_set,
                     validation_data=validation_set,
-                    epochs=100,
+                    epochs=15,
                     verbose=1,
                     callbacks=[myCallback()])
 
