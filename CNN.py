@@ -109,8 +109,8 @@ plt.plot(epochs, acc, 'r', label='Training accuracy')
 plt.plot(epochs, val_acc, 'b', label='Validation accuracy')
 plt.title('Training and validation accuracy')
 plt.legend(loc=0)
-plt.figure()
 plt.savefig('Training_and_validation_accuracy.png')
+plt.figure()
 plt.show()
 
 
