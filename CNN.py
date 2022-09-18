@@ -4,11 +4,13 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
 
 import warnings
+import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from tensorflow.keras import layers
 from tensorflow.keras import Model
 from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.preprocessing import image
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.applications.inception_v3 import InceptionV3
 
@@ -108,13 +110,11 @@ plt.plot(epochs, val_acc, 'b', label='Validation accuracy')
 plt.title('Training and validation accuracy')
 plt.legend(loc=0)
 plt.figure()
-
+plt.savefig('Training_and_validation_accuracy.png')
 plt.show()
 
 
 # Part 5 - Making a single prediction
-import numpy as np
-from keras.preprocessing import image
 
 test_image = image.load_img('dataset/single_prediction/cat_or_dog_1.jpg', target_size=(150, 150))
 test_image = image.img_to_array(test_image)
